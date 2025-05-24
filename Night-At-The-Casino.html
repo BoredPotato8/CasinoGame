@@ -336,27 +336,76 @@
     }
 
     // ====== Roulette ======
-    function spinRoulette() {
-      const betInput = document.getElementById('rouletteBet');
-      const betNumber = parseInt(betInput.value);
-      if (isNaN(betNumber) || betNumber < 0 || betNumber > 36) {
-        alert("Please enter a valid number between 0 and 36.");
-        return;
-      }
-      if (balance < 10) {
-        alert("Not enough balance to spin Roulette!");
-        return;
-      }
-      updateBalance(-10);
-      const winningNumber = Math.floor(Math.random() * 37);
-      const resultDiv = document.getElementById('rouletteResult');
-      if (betNumber === winningNumber) {
-        updateBalance(350); // 35x payout + original bet
-        resultDiv.innerHTML = `<span class="win">Winning number is ${winningNumber}! You won $350!</span>`;
-      } else {
-        resultDiv.innerHTML = `<span class="lose">Winning number is ${winningNumber}. You lost.</span>`;
-      }
+   <script>
+  const rouletteColors = {
+    red: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],
+    black: [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
+  };
+
+  function getColor(number) {
+    if (number === 0) return "green";
+    if (rouletteColors.red.includes(number)) return "red";
+    if (rouletteColors.black.includes(number)) return "black";
+    return "unknown";
+  }
+
+  function spinRoulette() {
+    const betNumber = parseInt(document.getElementById("rouletteBet").value);
+    const colorBet = document.getElementById("rouletteColor").value;
+    const wheelDisplay = document.getElementById("rouletteWheel");
+    const resultDisplay = document.getElementById("rouletteResult");
+
+    if (isNaN(betNumber) || betNumber < 0 || betNumber > 36) {
+      resultDisplay.innerText = "Enter a number between 0 and 36.";
+      return;
     }
+
+    if (money < 10) {
+      resultDisplay.innerText = "Not enough money!";
+      return;
+    }
+
+    // Deduct bet
+    money -= 10;
+    updateMoneyDisplay();
+
+    // Simulate spin
+    const spinResult = Math.floor(Math.random() * 37);
+    const spinColor = getColor(spinResult);
+
+    // Animate wheel
+    wheelDisplay.style.transform = "rotate(0deg)";
+    void wheelDisplay.offsetWidth; // force reflow
+    const spinDegrees = 360 * 5 + Math.floor(Math.random() * 360);
+    wheelDisplay.innerText = "🌀 Spinning...";
+    wheelDisplay.style.transform = `rotate(${spinDegrees}deg)`;
+
+    setTimeout(() => {
+      const displayText = `🎯 Landed on: ${spinResult} (${spinColor})`;
+      wheelDisplay.innerText = displayText;
+      wheelDisplay.style.color = spinColor;
+
+      let winnings = 0;
+
+      if (betNumber === spinResult) {
+        winnings += 360;
+      }
+
+      if (colorBet && colorBet === spinColor) {
+        winnings += 20; // 2x net (10 profit + original 10)
+      }
+
+      if (winnings > 0) {
+        money += winnings;
+        resultDisplay.innerText = `🎉 You won $${winnings}!`;
+      } else {
+        resultDisplay.innerText = `❌ You lost. It landed on ${spinResult} (${spinColor}).`;
+      }
+
+      updateMoneyDisplay();
+    }, 2000);
+  }
+</script>
 
     // ====== Video Poker ======
     let pokerDeck = [];
