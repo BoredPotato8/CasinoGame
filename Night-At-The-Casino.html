@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Night at the Casino</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      user-select: none;
+    }
+    h1 {
+      color: gold;
+      margin-bottom: 0;
+    }
+    .nav {
+      margin: 20px 0;
+    }
+    .nav button {
+      margin: 5px;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      background: linear-gradient(145deg, #b30000, #ff0000);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: all 0.2s ease-in-out;
+    }
+    .nav button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(145deg, #ff1a1a, #cc0000);
+    }
+    button {
+      margin-top: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      background: linear-gradient(145deg, #006600, #00cc00);
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: all 0.2s ease-in-out;
+    }
+    button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(145deg, #00cc00, #009900);
+    }
+    .game {
+      display: none;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 2px solid #444;
+      border-radius: 15px;
+      background: #111;
+    }
+    .active {
+      display: block;
+    }
+    .balance {
+      margin-top: 10px;
+      font-size: 20px;
+    }
+    .win {
+      color: lime;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .lose {
+      color: red;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .card {
+      display: inline-block;
+      width: 50px;
+      height: 70px;
+      line-height: 70px;
+      border: 1px solid white;
+      border-radius: 5px;
+      margin: 2px;
+      background: white;
+      color: black;
+      font-weight: bold;
+      user-select: none;
+      cursor: default;
+    }
+    .card.poker {
+      cursor: pointer;
+      border: 1px solid white;
+      user-select: none;
+    }
+    .card.held {
+      border: 3px solid gold !important;
+    }
+    label {
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    input[type=number] {
+      width: 60px;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 6px;
+      border: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎰 The Casino 🎰</h1>
+
+  <div class="nav">
+    <button onclick="showGame('slot')">Slot Machine</button>
+    <button onclick="showGame('blackjack')">Blackjack</button>
+    <button onclick="showGame('roulette')">Roulette</button>
+    <button onclick="showGame('poker')">Video Poker</button>
+  </div>
+
+  <div class="balance">Balance: $<span id="balance">500</span></div>
+
+  <!-- Slot Machine -->
+  <div id="slot" class="game active slot-machine">
+    <h2>Slot Machine</h2>
+    <div style="font-size: 50px;">
+      <span id="reel1">🍒</span>
+      <span id="reel2">🍋</span>
+      <span id="reel3">🍊</span>
+    </div>
+    <button onclick="spin()">Spin ($10)</button>
+    <div id="slotResult"></div>
+  </div>
+
+  <!-- Blackjack -->
+  <div id="blackjack" class="game blackjack">
+    <h2>Blackjack</h2>
+    <p>Your hand: <span id="playerHand"></span> (<span id="playerTotal"></span>)</p>
+    <p>Dealer hand: <span id="dealerHand"></span></p>
+    <button onclick="startBlackjack()">New Game ($10)</button>
+    <button onclick="hit()">Hit</button>
+    <button onclick="stand()">Stand</button>
+    <div id="blackjackResult"></div>
+  </div>
+
+  <!-- Roulette -->
+  <div id="roulette" class="game roulette">
+    <h2>Roulette</h2>
+    <label>Pick a number (0-36): <input type="number" id="rouletteBet" min="0" max="36"></label>
+    <button onclick="spinRoulette()">Spin ($10)</button>
+    <div id="rouletteResult"></div>
+  </div>
+
+  <!-- Video Poker -->
+  <div id="poker" class="game video-poker">
+    <h2>Video Poker</h2>
+    <button onclick="dealPoker()">Deal / Draw ($10)</button>
+    <p>Your Hand: <span id="pokerHand"></span></p>
+    <div id="pokerResult"></div>
+  </div>
+
+  <script>
+    // ====== Shared balance and UI ======
+    let balance = 500;
+    const balanceDisplay = document.getElementById('balance');
+
+    function updateBalance(amount) {
+      balance += amount;
+      if (balance < 0) balance = 0;
+      balanceDisplay.textContent = balance;
+    }
+
+    function showGame(gameId) {
+      ['slot', 'blackjack', 'roulette', 'poker'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+      });
+      document.getElementById(gameId).classList.add('active');
+      clearMessages();
+    }
+
+    function clearMessages() {
+      ['slotResult', 'blackjackResult', 'rouletteResult', 'pokerResult'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
+    }
+
+    // ====== Slot Machine ======
+    const slotSymbols = ['🍒', '🍋', '🍊', '🍉', '⭐', '7️⃣'];
+    function spin() {
+      if (balance < 10) {
+        alert("Not enough balance to spin!");
+        return;
+      }
+      updateBalance(-10);
+      const reel1 = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+      const reel2 = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+      const reel3 = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+
+      document.getElementById('reel1').textContent = reel1;
+      document.getElementById('reel2').textContent = reel2;
+      document.getElementById('reel3').textContent = reel3;
+
+      let resultText = '';
+      let winAmount = 0;
+
+      if (reel1 === reel2 && reel2 === reel3) {
+        if (reel1 === '7️⃣') {
+          winAmount = 300;
+          resultText = '🎉 Jackpot! You won $300!';
+        } else {
+          winAmount = 50;
+          resultText = `🎉 Triple ${reel1}! You won $50!`;
+        }
+      } else if (reel1 === reel2 || reel2 === reel3 || reel1 === reel3) {
+        winAmount = 20;
+        resultText = '✨ Two matching symbols! You won $20!';
+      } else {
+        resultText = 'No match. Try again!';
+      }
+
+      if (winAmount > 0) updateBalance(winAmount);
+
+      const resultDiv = document.getElementById('slotResult');
+      resultDiv.textContent = resultText;
+      resultDiv.className = winAmount > 0 ? 'win' : 'lose';
+    }
+
+    // ====== Blackjack ======
+    let deck = [];
+    let playerHand = [];
+    let dealerHand = [];
+    let gameInProgress = false;
+
+    function createDeck() {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+      const newDeck = [];
+      suits.forEach(suit => {
+        ranks.forEach(rank => {
+          newDeck.push({rank, suit});
+        });
+      });
+      return newDeck;
+    }
+
+    function shuffleDeck() {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function cardValue(card) {
+      if (card.rank === 'A') return 11;
+      if (['K','Q','J'].includes(card.rank)) return 10;
+      return parseInt(card.rank);
+    }
+
+    function handValue(hand) {
+      let val = 0;
+      let aces = 0;
+      hand.forEach(card => {
+        val += cardValue(card);
+        if (card.rank === 'A') aces++;
+      });
+      while(val > 21 && aces > 0) {
+        val -= 10;
+        aces--;
+      }
+      return val;
+    }
+
+    function displayHand(hand) {
+      return hand.map(card => `<span class="card">${card.rank}${card.suit}</span>`).join(' ');
+    }
+
+    function startBlackjack() {
+      if (balance < 10) {
+        alert("Not enough balance to play Blackjack!");
+        return;
+      }
+      updateBalance(-10);
+      deck = createDeck();
+      shuffleDeck();
+      playerHand = [deck.pop(), deck.pop()];
+      dealerHand = [deck.pop(), deck.pop()];
+      gameInProgress = true;
+      updateBlackjackDisplay();
+      document.getElementById('blackjackResult').textContent = '';
+    }
+
+    function updateBlackjackDisplay() {
+      document.getElementById('playerHand').innerHTML = displayHand(playerHand);
+      document.getElementById('playerTotal').textContent = handValue(playerHand);
+      document.getElementById('dealerHand').innerHTML = displayHand(dealerHand);
+    }
+
+    function hit() {
+      if (!gameInProgress) return;
+      playerHand.push(deck.pop());
+      updateBlackjackDisplay();
+      const playerTotal = handValue(playerHand);
+      if (playerTotal > 21) {
+        gameInProgress = false;
+        document.getElementById('blackjackResult').innerHTML = '<span class="lose">Bust! You lose.</span>';
+      }
+    }
+
+    function stand() {
+      if (!gameInProgress) return;
+      let dealerTotal = handValue(dealerHand);
+      while(dealerTotal < 17) {
+        dealerHand.push(deck.pop());
+        dealerTotal = handValue(dealerHand);
+      }
+      updateBlackjackDisplay();
+      const playerTotal = handValue(playerHand);
+      let resultText = '';
+      if (dealerTotal > 21 || playerTotal > dealerTotal) {
+        updateBalance(20);
+        resultText = '<span class="win">You win $20!</span>';
+      } else if (playerTotal === dealerTotal) {
+        updateBalance(10);
+        resultText = 'Push! Bet returned.';
+      } else {
+        resultText = '<span class="lose">Dealer wins!</span>';
+      }
+      document.getElementById('blackjackResult').innerHTML = resultText;
+      gameInProgress = false;
+    }
+
+    // ====== Roulette ======
+    function spinRoulette() {
+      const betInput = document.getElementById('rouletteBet');
+      const betNumber = parseInt(betInput.value);
+      if (isNaN(betNumber) || betNumber < 0 || betNumber > 36) {
+        alert("Please enter a valid number between 0 and 36.");
+        return;
+      }
+      if (balance < 10) {
+        alert("Not enough balance to spin Roulette!");
+        return;
+      }
+      updateBalance(-10);
+      const winningNumber = Math.floor(Math.random() * 37);
+      const resultDiv = document.getElementById('rouletteResult');
+      if (betNumber === winningNumber) {
+        updateBalance(350); // 35x payout + original bet
+        resultDiv.innerHTML = `<span class="win">Winning number is ${winningNumber}! You won $350!</span>`;
+      } else {
+        resultDiv.innerHTML = `<span class="lose">Winning number is ${winningNumber}. You lost.</span>`;
+      }
+    }
+
+    // ====== Video Poker ======
+    let pokerDeck = [];
+    let pokerHand = [];
+    let pokerHeld = [false, false, false, false, false];
+    let pokerInProgress = false;
+
+    function createPokerDeck() {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+      const deck = [];
+      suits.forEach(suit => {
+        ranks.forEach(rank => {
+          deck.push({rank, suit});
+        });
+      });
+      return deck;
+    }
+
+    function shufflePokerDeck() {
+      for (let i = pokerDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pokerDeck[i], pokerDeck[j]] = [pokerDeck[j], pokerDeck[i]];
+      }
+    }
+
+    function dealPoker() {
+      if (!pokerInProgress) {
+        if (balance < 10) {
+          alert("Not enough balance to play Video Poker!");
+          return;
+        }
+        updateBalance(-10);
+        pokerDeck = createPokerDeck();
+        shufflePokerDeck();
+        pokerHand = [];
+        pokerHeld = [false, false, false, false, false];
+        for (let i=0; i<5; i++) {
+          pokerHand.push(pokerDeck.pop());
+        }
+        pokerInProgress = true;
+        updatePokerDisplay();
+        document.getElementById('pokerResult').textContent = '';
+      } else {
+        // Draw phase - replace unheld cards
+        for (let i=0; i<5; i++) {
+          if (!pokerHeld[i]) {
+            pokerHand[i] = pokerDeck.pop();
+          }
+        }
+        pokerInProgress = false;
+        updatePokerDisplay();
+        const payout = evaluatePokerHand(pokerHand);
+        if (payout > 0) {
+          updateBalance(payout);
+          document.getElementById('pokerResult').innerHTML = `<span class="win">You won $${payout}!</span>`;
+        } else {
+          document.getElementById('pokerResult').innerHTML = `<span class="lose">No win. Try again!</span>`;
+        }
+      }
+    }
+
+    function updatePokerDisplay() {
+      const handSpan = document.getElementById('pokerHand');
+      handSpan.innerHTML = pokerHand.map((card, i) => {
+        return `<span class="card poker ${pokerHeld[i] ? 'held' : ''}" onclick="toggleHold(${i})">${card.rank}${card.suit}</span>`;
+      }).join(' ');
+    }
+
+    function toggleHold(index) {
+      if (!pokerInProgress) return;
+      pokerHeld[index] = !pokerHeld[index];
+      updatePokerDisplay();
+    }
+
+    // Poker hand evaluation helper functions
+    function evaluatePokerHand(hand) {
+      // Map ranks to values for easier eval
+      const ranksMap = {
+        '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,
+        '10':10,'J':11,'Q':12,'K':13,'A':14
+      };
+      const rankCounts = {};
+      const suits = {};
+      let values = hand.map(c => ranksMap[c.rank]).sort((a,b)=>a-b);
+
+      hand.forEach(card => {
+        rankCounts[card.rank] = (rankCounts[card.rank] || 0) + 1;
+        suits[card.suit] = (suits[card.suit] || 0) + 1;
+      });
+
+      const counts = Object.values(rankCounts).sort((a,b)=>b-a);
+
+      // Check flush
+      const flush = Object.values(suits).some(c => c === 5);
+
+      // Check straight
+      let straight = false;
+      for (let i=0; i<values.length-1; i++) {
+        if (values[i+1] !== values[i] + 1) {
+          straight = false;
+          break;
+        }
+        straight = true;
+      }
+      // Special low-Ace straight (A,2,3,4,5)
+      if (!straight && JSON.stringify(values) === JSON.stringify([2,3,4,5,14])) {
+        straight = true;
+      }
+
+      // Royal flush
+      if (flush && straight && values[0] === 10) return 250;
+      // Straight flush
+      if (flush && straight) return 50;
+      // Four of a kind
+      if (counts[0] === 4) return 25;
+      // Full house
+      if (counts[0] === 3 && counts[1] === 2) return 9;
+      // Flush
+      if (flush) return 6;
+      // Straight
+      if (straight) return 4;
+      // Three of a kind
+      if (counts[0] === 3) return 3;
+      // Two pair
+      if (counts[0] === 2 && counts[1] === 2) return 2;
+      // One pair (Jacks or better)
+      if (counts[0] === 2) {
+        // Check if pair is J or higher
+        for (const rank in rankCounts) {
+          if (rankCounts[rank] === 2) {
+            if (['J','Q','K','A'].includes(rank)) return 1;
+          }
+        }
+      }
+      // No winning hand
+      return 0;
+    }
+
+  </script>
+</body>
+</html>
